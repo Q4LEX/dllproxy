@@ -1,9 +1,14 @@
+use lazy_static::lazy_static;
+use libloading::{Library, Symbol};
+use std::ffi::CString;
+use std::arch::asm;
+
 #[macro_export]
 macro_rules! wrap_dll {
     ($dll_name:expr, $($function_name:ident)*, $(($to_hook_function_name:ident, $hook_function_name:ident))*) => {
         lazy_static! {
             static ref WRAPPED_LIBRARY: Library = unsafe {
-                let library = Library::new($dll_name).expect("Couldn't load DLL: {}", $dll_name);
+                let library = Library::new($dll_name).expect("Couldn't load DLL");
                 library
             };
 
