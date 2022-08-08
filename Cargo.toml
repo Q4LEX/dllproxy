@@ -1,0 +1,10 @@
+[package]
+name = "dllproxy"
+version = "0.1.0"
+edition = "2021"
+author = "Q4LEX"
+
+
+[dependencies]
+libloading = "0.7.3"
+lazy_static = "1.4.0"
