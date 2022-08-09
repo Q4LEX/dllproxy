@@ -37,7 +37,7 @@ macro_rules! wrap_dll {
             $crate::create_hook_function!($to_hook_function_name, $hook_function_name);
         )*
 
-        pub unsafe fn get_jump_address(function_name: *const u8) -> *const usize {
+        pub unsafe extern "system" fn get_jump_address(function_name: *const u8) -> *const usize {
             let name = ::std::ffi::CStr::from_ptr(function_name as *const i8);
             for f in &*WRAPPED_FUNCTIONS {
                 if f.0.as_c_str() == name {
@@ -52,6 +52,7 @@ macro_rules! wrap_dll {
 #[macro_export]
 macro_rules! create_wrapper_function {
     ($function_name:ident) => {
+        #[cfg(target_arch = "x86_64")]
         #[no_mangle]
         pub unsafe extern "system" fn $function_name() -> u32 {
              ::std::arch::asm!(
@@ -83,12 +84,27 @@ macro_rules! create_wrapper_function {
             );
             1
         }
+
+        #[cfg(target_arch = "x86")]
+        #[no_mangle]
+        pub unsafe extern "system" fn $function_name() -> u32 {
+            ::std::arch::asm!(
+                "push ecx",
+                "call eax",
+                "jmp eax",
+                in("eax") get_jump_address,
+                in("ecx")  ::std::concat!(stringify!($function_name), "\0").as_ptr() as usize,
+                options(nostack),
+            );
+            1
+        }
     }
 }
 
 #[macro_export]
 macro_rules! create_hook_function {
     ($function_name:ident, $hook:ident) => {
+        #[cfg(target_arch = "x86_64")]
         #[no_mangle]
         pub unsafe extern "system" fn $function_name() -> u32 {
              ::std::arch::asm!(
@@ -124,6 +140,25 @@ macro_rules! create_hook_function {
                 "pop rcx",
                 "jmp rax",
                 options(nostack)
+            );
+            1
+        }
+
+        #[cfg(target_arch = "x86")]
+        #[no_mangle]
+        pub unsafe extern "system" fn $function_name() -> u32 {
+             ::std::arch::asm!(
+                "call eax",
+                in("eax") $hook,
+                options(nostack),
+            );
+             ::std::arch::asm!(
+                "push ecx",
+                "call eax",
+                "jmp eax",
+                in("eax") get_jump_address,
+                in("ecx")  ::std::concat!(stringify!($function_name), "\0").as_ptr() as usize,
+                options(nostack),
             );
             1
         }
